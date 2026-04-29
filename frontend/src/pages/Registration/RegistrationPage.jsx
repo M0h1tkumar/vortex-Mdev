@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import MachinedCard from '../../components/common/MachinedCard';
 import TrackDivider from '../../components/common/TrackDivider';
 
-const RegistrationPage = () => {
+const RegistrationPage = ({ onRegister }) => {
   const [formData, setFormData] = useState({
     fullName: '',
     campus: '',
@@ -20,7 +20,9 @@ const RegistrationPage = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('Form Submitted:', formData);
-    alert('Registration Successful! (Mocked)');
+    if (onRegister) {
+      onRegister(formData);
+    }
   };
 
   return (
