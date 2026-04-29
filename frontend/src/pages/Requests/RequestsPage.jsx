@@ -13,8 +13,12 @@ const RequestsPage = ({ invites, setInvites, sentInvites, setSentInvites, teamMe
     }
     alert(`Accepted invite from ${invite.teamName}!`);
     setInvites(invites.filter(i => i.id !== invite.id));
+    
+    // Find the full candidate object for the inviter
+    const leader = candidates.find(c => c.id === invite.fromId) || { id: invite.fromId, name: invite.from, domain: invite.domain, gender: 'Male' };
+    
     // Mocking adding the user to that team by initializing team with leader and user
-    setTeamMembers([{ id: invite.fromId, name: invite.from, domain: invite.domain, gender: 'Male' }, user]);
+    setTeamMembers([leader, user]);
   };
 
   const rejectInvite = (e, invite) => {
