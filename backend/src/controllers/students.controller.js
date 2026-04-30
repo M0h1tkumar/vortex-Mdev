@@ -1,109 +1,136 @@
 import { prisma } from '../config/db.js';
+import { sendMail, generateOTP, generateRandomPassword } from '../utils/mail.js';
 
 export const registerStudent = async (req, res, next) => {
   try {
-    const { fullName, rollNumber, email, gender, institution, domainId } = req.body;
+    const { fullName, email, gender, institutionId, domainId, psId, summary } = req.body;
 
-    // Check domain exists
-    const domain = await prisma.domain.findUnique({ where: { id: domainId } });
-    if (!domain) return res.status(404).json({ error: 'Domain not found' });
+    const existing = await prisma.student.findUnique({ where: { email } });
+    if (existing) return res.status(400).json({ error: 'EMAIL_ALREADY_LINKED' });
+
+    const otp = generateOTP();
 
     const student = await prisma.student.create({
-      data: { fullName, rollNumber, email, gender, institution, domainId },
-      include: { domain: true },
+      data: { 
+        fullName, 
+        email, 
+        gender, 
+        instituteId: institutionId, 
+        domainId, 
+        psId, 
+        summary,
+        otp,
+        verificationStatus: 'PENDING',
+        role: 'STUDENT'
+      },
     });
 
-    res.status(201).json({ message: 'Registration successful', student });
+    await sendMail({
+      to: email,
+      subject: '[VORTEX] OTP_VERIFICATION_REQUIRED',
+      text: `Your tactical verification code is: ${otp}`
+    });
+
+    res.status(201).json({ 
+      message: 'REGISTRATION_INITIATED: CHECK_EMAIL_FOR_OTP', 
+      studentId: student.id 
+    });
   } catch (err) {
-    if (err.code === 'P2002') {
-      return res.status(400).json({ error: 'Email or roll number already exists' });
-    }
     next(err);
   }
 };
 
-export const getStudentsByDomain = async (req, res, next) => {
+export const verifyOTP = async (req, res, next) => {
   try {
-    const { domainId } = req.params;
-    const { status } = req.query;
+    const { studentId, otp } = req.body;
+    const student = await prisma.student.findUnique({ where: { id: studentId } });
 
-    const domain = await prisma.domain.findUnique({ where: { id: domainId } });
-    if (!domain) return res.status(404).json({ error: 'Domain not found' });
+    if (!student) return res.status(404).json({ error: 'OPERATIVE_NOT_FOUND' });
+    if (student.otp !== otp) return res.status(400).json({ error: 'INVALID_OTP_SIGNAL' });
 
-    const where = { domainId };
+    await prisma.student.update({
+      where: { id: studentId },
+      data: { otpVerified: true, otp: null }
+    });
+
+    await sendMail({
+      to: student.email,
+      subject: '[VORTEX] REGISTRATION_PENDING_REVIEW',
+      text: `Tactical registration received. Admin review in progress. You will be notified shortly.`
+    });
+
+    res.json({ message: 'OTP_VERIFIED: AWAITING_ADMIN_CLEARANCE' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const adminVerifyStudent = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body; // VERIFIED or REJECTED
+
+    const student = await prisma.student.findUnique({ where: { id } });
+    if (!student) return res.status(404).json({ error: 'OPERATIVE_NOT_FOUND' });
+
+    if (status === 'VERIFIED') {
+      const password = generateRandomPassword();
+      await prisma.student.update({
+        where: { id },
+        data: { 
+          verificationStatus: 'VERIFIED',
+          password // In real app, hash this
+        }
+      });
+
+      await sendMail({
+        to: student.email,
+        subject: '[VORTEX] ACCESS_GRANTED: SQUAD_UPLINK_ESTABLISHED',
+        text: `Clearance granted. Credentials for deployment:\nEMAIL: ${student.email}\nKEY: ${password}\n\nUplink at: http://vortex.system`
+      });
+    } else {
+      await prisma.student.update({
+        where: { id },
+        data: { verificationStatus: 'REJECTED' }
+      });
+      await sendMail({
+        to: student.email,
+        subject: '[VORTEX] CLEARANCE_DENIED',
+        text: `Your operative registration has been rejected by mission control.`
+      });
+    }
+
+    res.json({ message: `OPERATIVE_STATUS_UPDATED: ${status}` });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getAllOperatives = async (req, res, next) => {
+  try {
+    const { status, instituteId, domainId, search } = req.query;
+    const where = {};
     if (status) where.verificationStatus = status;
+    if (instituteId) where.instituteId = instituteId;
+    if (domainId) where.domainId = domainId;
+    if (search) {
+      where.OR = [
+        { fullName: { contains: search } },
+        { email: { contains: search } }
+      ];
+    }
 
     const students = await prisma.student.findMany({
       where,
-      include: { domain: true },
-      orderBy: { createdAt: 'desc' },
+      include: { 
+        institute: true, 
+        domain: true, 
+        problemStatement: true 
+      },
+      orderBy: { createdAt: 'desc' }
     });
 
-    res.json({ domain: domain.name, count: students.length, students });
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const getVerifiedStudents = async (_req, res, next) => {
-  try {
-    const students = await prisma.student.findMany({
-      where: { verificationStatus: 'Verified' },
-      include: { domain: true },
-      orderBy: { fullName: 'asc' },
-    });
-
-    res.json({ count: students.length, students });
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const verifySingleStudent = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    if (!['Verified', 'Rejected'].includes(status)) {
-      return res.status(400).json({ error: 'Status must be Verified or Rejected' });
-    }
-
-    const existing = await prisma.student.findUnique({ where: { id } });
-    if (!existing) return res.status(404).json({ error: 'Student not found' });
-
-    const student = await prisma.student.update({
-      where: { id },
-      data: { verificationStatus: status },
-      include: { domain: true },
-    });
-
-    res.json({ message: `Student ${status.toLowerCase()} successfully`, student });
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const batchVerifyByDomain = async (req, res, next) => {
-  try {
-    const { domainId } = req.params;
-    const { status } = req.body;
-
-    if (!['Verified', 'Rejected'].includes(status)) {
-      return res.status(400).json({ error: 'Status must be Verified or Rejected' });
-    }
-
-    const domain = await prisma.domain.findUnique({ where: { id: domainId } });
-    if (!domain) return res.status(404).json({ error: 'Domain not found' });
-
-    const result = await prisma.student.updateMany({
-      where: { domainId, verificationStatus: 'Pending' },
-      data: { verificationStatus: status },
-    });
-
-    res.json({
-      message: `${result.count} student(s) ${status.toLowerCase()} in ${domain.name} domain`,
-      count: result.count,
-    });
+    res.json({ count: students.length, operatives: students });
   } catch (err) {
     next(err);
   }
