@@ -1,0 +1,28 @@
+.evaluation-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.evaluation-form {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.evaluation-form h2 {
+  font-size: 24px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #1a1a1a;
+  padding-bottom: 12px;
+}
+
+.evaluation-form textarea.input-glass {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.submit-btn {
+  align-self: flex-start;
+}
