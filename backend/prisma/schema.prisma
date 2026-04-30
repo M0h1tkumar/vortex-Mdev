@@ -3,7 +3,42 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+  TEAMLEAD
+  JURY
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum TeamStatus {
+  FORMING
+  CONFIRMED
+  DISQUALIFIED
+}
+
+model GlobalConfig {
+  id                  String  @id @default("vortex_config")
+  lockdownActive      Boolean @default(false)
+  leaderboardVisible  Boolean @default(true)
+  leaderboardLimit    Int     @default(100)
+  showMarks           Boolean @default(false)
+  broadcastSubject    String?
+  broadcastText       String?
+}
+
+model Institute {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  students  Student[]
 }
 
 model Domain {
@@ -15,49 +50,65 @@ model Domain {
   createdAt         DateTime           @default(now())
 }
 
-model Student {
-  id                 String       @id @default(cuid())
-  fullName           String
-  rollNumber         String       @unique
-  email              String       @unique
-  gender             String
-  institution        String
-  domainId           String
-  domain             Domain       @relation(fields: [domainId], references: [id])
-  verificationStatus String       @default("Pending")
-  createdAt          DateTime     @default(now())
-
-  teams   TeamMember[]
-  ledTeam Team?        @relation("TeamLeader")
-}
-
 model ProblemStatement {
   id               String   @id @default(cuid())
   title            String
+  description      String?  @db.Text
   domainId         String
   domain           Domain   @relation(fields: [domainId], references: [id])
   minDomainMembers Int      @default(2)
   createdAt        DateTime @default(now())
 
-  teams Team[]
+  students Student[]
+  teams    Team[]
+}
+
+model Student {
+  id                 String             @id @default(cuid())
+  fullName           String
+  rollNumber         String?            @unique
+  email              String             @unique
+  password           String?            
+  summary            String?            @db.VarChar(1000)
+  role               Role               @default(STUDENT)
+  gender             String?
+  
+  instituteId        String?
+  institute          Institute?         @relation(fields: [instituteId], references: [id])
+  
+  domainId           String?
+  domain             Domain?            @relation(fields: [domainId], references: [id])
+  
+  psId               String?
+  problemStatement   ProblemStatement? @relation(fields: [psId], references: [id])
+  
+  verificationStatus VerificationStatus @default(PENDING)
+  otp                String?
+  otpVerified        Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+
+  teams        TeamMember[]
+  ledTeam      Team?          @relation("TeamLeader")
+  joinRequests JoinRequest[]
 }
 
 model Team {
   id                  String           @id @default(cuid())
-  teamName            String
+  teamName            String           @unique
   psId                String
   problemStatement    ProblemStatement @relation(fields: [psId], references: [id])
   leaderId            String           @unique
   leader              Student          @relation("TeamLeader", fields: [leaderId], references: [id])
-  teamStatus          String           @default("Forming")
+  teamStatus          TeamStatus       @default(FORMING)
   memberCount         Int              @default(0)
   femaleCount         Int              @default(0)
   domainSpecificCount Int              @default(0)
   createdAt           DateTime         @default(now())
 
-  members     TeamMember[]
-  evaluations Evaluation[]
-  leaderboard Leaderboard?
+  members      TeamMember[]
+  evaluations  Evaluation[]
+  leaderboard  Leaderboard?
+  requests     JoinRequest[]
 }
 
 model TeamMember {
@@ -71,15 +122,48 @@ model TeamMember {
   @@id([teamId, studentId])
 }
 
-model Evaluation {
+model JoinRequest {
   id          String   @id @default(cuid())
   teamId      String
   team        Team     @relation(fields: [teamId], references: [id])
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  status      String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt   DateTime @default(now())
+
+  @@unique([teamId, studentId])
+}
+
+model EvaluationCriteria {
+  id          String       @id @default(cuid())
+  name        String
+  maxMarks    Int
+  evaluations ScoreEntry[]
+}
+
+model Evaluation {
+  id          String       @id @default(cuid())
+  teamId      String
+  team        Team         @relation(fields: [teamId], references: [id])
   round       Int
   juryId      String
-  score       Float
   feedback    String?
-  submittedAt DateTime @default(now())
+  scores      ScoreEntry[]
+  totalScore  Float        @default(0)
+  submittedAt DateTime     @default(now())
+
+  @@unique([teamId, round])
+}
+
+model ScoreEntry {
+  id           String             @id @default(cuid())
+  evaluationId String
+  evaluation   Evaluation         @relation(fields: [evaluationId], references: [id])
+  criteriaId   String
+  criteria     EvaluationCriteria @relation(fields: [criteriaId], references: [id])
+  marks        Float
+
+  @@unique([evaluationId, criteriaId])
 }
 
 model Leaderboard {
