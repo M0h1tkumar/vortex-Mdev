@@ -42,3 +42,4 @@ Desktop.ini
 # Docker
 .docker/
 PRD.md
+*.md
