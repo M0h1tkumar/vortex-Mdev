@@ -1,13 +1,14 @@
 # Build stage
 FROM node:20-slim AS builder
 
-WORKDIR /app
+# Install OpenSSL for Prisma
+RUN apt-get update -y && apt-get install -y openssl
 
-# Install openssl for Prisma
-RUN apt-get update && apt-get install -y openssl
+WORKDIR /app
 
 COPY package*.json ./
 COPY prisma ./prisma/
+COPY prisma.config.js ./
 
 RUN npm install
 RUN npx prisma generate
@@ -17,13 +18,15 @@ COPY . .
 # Final stage
 FROM node:20-slim AS runner
 
-WORKDIR /app
+# Install OpenSSL for Prisma in the final stage too
+RUN apt-get update -y && apt-get install -y openssl
 
-RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
 
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.js ./
 COPY --from=builder /app/src ./src
 
 ENV NODE_ENV=production
