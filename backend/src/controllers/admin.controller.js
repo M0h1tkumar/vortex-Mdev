@@ -1,6 +1,38 @@
 import { prisma } from '../config/db.js';
 import { sendMail } from '../utils/mail.js';
 
+export const reevaluateTeams = async (req, res, next) => {
+  try {
+    const config = await prisma.globalConfig.findUnique({ where: { id: 'vortex_config' } });
+    const rules = config || { minTeamMembers: 4, maxTeamMembers: 5, minFemaleMembers: 1, minDomainExperts: 2 };
+
+    const teams = await prisma.team.findMany();
+    let updatedCount = 0;
+
+    for (const team of teams) {
+      const hasFemale = team.femaleCount >= rules.minFemaleMembers;
+      const hasMinDomainExperts = team.domainSpecificCount >= rules.minDomainExperts;
+      const hasMinMembers = team.memberCount >= rules.minTeamMembers;
+      const withinMaxMembers = team.memberCount <= rules.maxTeamMembers;
+
+      const shouldBeConfirmed = hasFemale && hasMinDomainExperts && hasMinMembers && withinMaxMembers;
+      const currentStatus = shouldBeConfirmed ? 'CONFIRMED' : 'FORMING';
+
+      if (team.teamStatus !== currentStatus) {
+        await prisma.team.update({
+          where: { id: team.id },
+          data: { teamStatus: currentStatus }
+        });
+        updatedCount++;
+      }
+    }
+
+    res.json({ message: `REEVALUATION_COMPLETE: ${updatedCount} SQUADS_UPDATED` });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const updateGlobalConfig = async (req, res, next) => {
   try {
     const config = await prisma.globalConfig.upsert({
@@ -87,12 +119,15 @@ export const generateReport = async (req, res, next) => {
       }
     };
 
-    for (const team of teams) {
-      const minDomain = team.problemStatement.minDomainMembers;
-      const hasFemale = team.femaleCount >= 1;
-      const hasMinDomainExperts = team.domainSpecificCount >= minDomain;
+    const config = await prisma.globalConfig.findUnique({ where: { id: 'vortex_config' } });
+    const rules = config || { minTeamMembers: 2, maxTeamMembers: 5, minFemaleMembers: 1, minDomainExperts: 1 };
 
-      const isQualified = hasFemale && hasMinDomainExperts && team.memberCount >= 2; // Assuming min 2 members total
+    for (const team of teams) {
+      const hasFemale = team.femaleCount >= rules.minFemaleMembers;
+      const hasMinDomainExperts = team.domainSpecificCount >= rules.minDomainExperts;
+      const hasMinMembers = team.memberCount >= rules.minTeamMembers;
+
+      const isQualified = hasFemale && hasMinDomainExperts && hasMinMembers;
       
       const teamData = {
         id: team.id,
@@ -100,7 +135,7 @@ export const generateReport = async (req, res, next) => {
         members: team.memberCount,
         femaleCount: team.femaleCount,
         domainExpertCount: team.domainSpecificCount,
-        reason: !isQualified ? `${!hasFemale ? 'No female member. ' : ''}${!hasMinDomainExperts ? `Insufficient domain experts (need ${minDomain}).` : ''}` : null
+        reason: !isQualified ? `${!hasFemale ? `Need ${rules.minFemaleMembers} female member(s). ` : ''}${!hasMinDomainExperts ? `Insufficient domain experts (need ${rules.minDomainExperts}). ` : ''}${!hasMinMembers ? `Minimum ${rules.minTeamMembers} members required.` : ''}` : null
       };
 
       if (isQualified) {
