@@ -33,13 +33,13 @@ export const getProblemStatementById = async (req, res, next) => {
 
 export const createProblemStatement = async (req, res, next) => {
   try {
-    const { title, domainId, minDomainMembers } = req.body;
+    const { title, domainId, description } = req.body;
 
     const domain = await prisma.domain.findUnique({ where: { id: domainId } });
     if (!domain) return res.status(404).json({ error: 'Domain not found' });
 
     const ps = await prisma.problemStatement.create({
-      data: { title, domainId, minDomainMembers: minDomainMembers || 2 },
+      data: { title, domainId, description },
       include: { domain: true },
     });
 
