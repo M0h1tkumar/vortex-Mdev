@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { 
   submitEvaluation, 
-  getCriteria 
+  getCriteria,
+  createCriteria,
+  deleteCriteria
 } from '../controllers/evaluations.controller.js';
 
 const router = Router();

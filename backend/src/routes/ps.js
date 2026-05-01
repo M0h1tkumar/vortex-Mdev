@@ -13,7 +13,7 @@ const router = Router();
 const psSchema = z.object({
   title: z.string().min(1),
   domainId: z.string().min(1),
-  minDomainMembers: z.number().int().min(1).default(2),
+  description: z.string().optional(),
 });
 
 router.get('/', getAllProblemStatements);
