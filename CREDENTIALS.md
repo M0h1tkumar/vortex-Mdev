@@ -5,44 +5,46 @@ Use these to verify the different perspectives and workflows of the hackathon ma
 
 ## 1. MISSION CONTROL (ADMIN)
 - **Email:** `admin@vortex.com`
-- **Password:** `password123`
+- **Password:** `admin123`
 - **Role:** `ADMIN`
-- **Capabilities:** Set institutes/domains/PS, verify students, manage criteria, broadcast mail, trigger lockdown, view detailed reports.
+- **Capabilities:** Unified Command Center, manage operatives, trigger lockdowns, view biometric squad debriefs, broadcast system-wide.
 
-## 2. CHIEF EVALUATOR (JURY/JUDGE)
+## 2. CHIEF EVALUATOR (JURY)
 - **Email:** `jury@vortex.com`
 - **Password:** `password123`
 - **Role:** `JURY`
-- **Capabilities:** Search teams by ID/Name, view member profiles, submit immutable marks based on criteria.
+- **Capabilities:** Retrieve squad intel, submit tactical evaluations, view mission objectives.
 
-## 3. SQUAD COMMANDER (TEAMLEAD)
-- **Email:** `student1@example.com`
-- **Password:** `pass1`
-- **Role:** `TEAMLEAD`
-- **Team Name:** `Team 1 - Cybersecurity Warriors`
+## 3. SQUAD COMMANDERS (TEAMLEAD)
+- **Email:** `alice.vance@vortex.com`
+- **Password:** `password123`
+- **Squad:** `Shadow Squad`
 - **Status:** `CONFIRMED`
-- **Capabilities:** View team requests, manage members, see team-specific notifications.
+- **Capabilities:** Manage squad members, view enlistment requests, leading mission objectives.
 
-## 4. FORMING SQUAD LEAD (TEAMLEAD)
-- **Email:** `student21@example.com`
-- **Password:** `pass21`
-- **Role:** `TEAMLEAD`
-- **Team Name:** `Team 5 - FinTech Warriors`
-- **Status:** `FORMING` (Needs more members/domain experts)
-- **Capabilities:** Accept/Reject join requests, see "what is left" for qualification.
+- **Email:** `diana.prince@vortex.com`
+- **Password:** `password123`
+- **Squad:** `Titan Squad`
+- **Status:** `FORMING`
+- **Capabilities:** Reviewing pending enlistment requests, filling mission requirements.
 
-## 5. UNASSIGNED OPERATIVE (STUDENT)
-- **Email:** `student4@example.com`
-- **Password:** `pass4`
-- **Role:** `STUDENT`
-- **Status:** `VERIFIED`
-- **Capabilities:** Browse compatible teams (same PS), send join requests to teams, view individual dashboard.
+## 4. VERIFIED OPERATIVES (STUDENT)
+- **Email:** `ethan.hunt@vortex.com`
+- **Password:** `password123`
+- **Status:** `VERIFIED` (Assigned to Phantom Squad as Member)
+- **Capabilities:** View personal dashboard, mission status, and squad member list.
 
-## 6. PENDING REGISTRATION (STUDENT)
-- **Email:** `student10@example.com`
-- **Password:** `pass10`
+- **Email:** `miles.morales@vortex.com`
+- **Password:** `password123`
+- **Status:** `VERIFIED` (Unassigned)
+- **Capabilities:** Browse compatible squads, send join requests, view personal roll number.
+
+## 5. PENDING CLEARANCE (STUDENT)
+- **Email:** `fiona.gallager@vortex.com`
+- **Password:** `password123`
 - **Status:** `PENDING`
-- **Note:** This user is not yet verified by Admin. They cannot log in until verified.
+- **Note:** Awaiting admin verification in the Command Center.
 
 ---
-**ACCESS URL:** http://localhost (Frontend) | http://localhost:3001 (Backend API)
+**ALL SEEDED STUDENT PASSWORDS:** `password123`
+**ACCESS URL:** http://localhost (Frontend Interface) | http://localhost:3001 (Backend API)
